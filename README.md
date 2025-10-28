@@ -4,6 +4,8 @@
 
 Explore, descubra e mergulhe no mundo dos Pokémon de forma simples e divertida. Gotta catch 'em all! 🎯
 
+<h2>‼️No momento, A PokéAPI que estou utilizando apresenta instabilidades em alguns de seus recursos, o que pode afetar a qualidade ou a exibição de certas imagens. ‼️</h2>
+
 ---
 
 ## 🔗 Demonstração
