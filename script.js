@@ -11,7 +11,7 @@ const buttonPrev = document.querySelector('.btn-prev');
 const buttonNext = document.querySelector('.btn-next');
 const notFound = document.querySelector('.not-found');
 const infoCard = document.querySelector('.info-card');
-const pokemonInfo = document.querySelector('.pokemon-info')
+const pokemonInfo = document.querySelector('.pokemon-info');
 
 const colors = {
   fire: '#ff7676',
@@ -35,32 +35,104 @@ const colors = {
 
 let searchPokemon = 1;
 
+// Verifica se uma URL realmente existe (retorna true/false)
+async function checkImage(url) {
+  if (!url) return false;
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Busca Pokémon da API
 const fetchPokemon = async (pokemon) => {
-  const APIResponse = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon}`);
-  if (APIResponse.status === 200) {
-    return await APIResponse.json();
+  try {
+    const APIResponse = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon}`);
+    if (APIResponse.ok) {
+      return await APIResponse.json();
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Erro ao buscar Pokémon:', error);
+    return null;
   }
 };
 
+// Tenta várias URLs até achar uma imagem válida
+async function getPokemonImage(data) {
+  const urls = [];
+
+  // Sprites animados (somente até o 649)
+  if (data.id <= 649) {
+    urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${data.id}.gif`);
+  }
+
+  // Official artwork
+  urls.push(data.sprites.other?.['official-artwork']?.front_default);
+
+  // Dream World (SVG)
+  urls.push(data.sprites.other?.dream_world?.front_default);
+
+  // Sprite padrão
+  urls.push(data.sprites.front_default);
+
+  // Sprite shiny
+  urls.push(data.sprites.front_shiny);
+
+  // Repositório direto da PokéAPI (fallback final)
+  urls.push(`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${data.id}.png`);
+
+  // Tenta cada URL até encontrar uma válida
+  for (const url of urls) {
+    if (await checkImage(url)) {
+      return url;
+    }
+  }
+
+  // Se nenhuma imagem for válida
+  return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/0.png';
+}
+
+// Tenta achar uma imagem de trás
+async function getPokemonBackImage(data) {
+  const urls = [
+    data.sprites.back_default,
+    data.sprites.back_shiny,
+    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/back/${data.id}.png`
+  ];
+
+  for (const url of urls) {
+    if (await checkImage(url)) {
+      return url;
+    }
+  }
+
+  // se não houver imagem de costas, retorna null
+  return null;
+}
+
+// Renderiza o Pokémon na tela
 const renderPokemon = async (pokemon) => {
   pokemonName.textContent = 'Loading...';
   pokemonNumber.textContent = '';
-  const data = await fetchPokemon(pokemon);
-
-  if (data) {
+  pokemonImage.style.display = 'none';
+  pokemonImage2.style.display = 'none';
   notFound.style.display = 'none';
 
-  // Corrigir imagens
-  pokemonImage.src = data.sprites.front_default || 'placeholder.png';
-  pokemonImage2.src = data.sprites.back_default || 'placeholder.png';
+  const data = await fetchPokemon(pokemon);
 
-  pokemonImage.style.display = 'block';
-  pokemonImage2.style.display = 'block';
+  if (!data) {
+    notFound.style.display = 'block';
+    pokemonName.textContent = 'Não encontrado';
+    pokemonNumber.textContent = '';
+    pokemonInfo.style.display = 'none';
+    return;
+  }
 
-  // Mostrar o elemento que contém as informações
-  pokemonInfo.style.display = 'block';  // <-- ESSA LINHA É IMPORTANTE
-
-  // Preencher conteúdo
+  pokemonInfo.style.display = 'block';
   pokemonName.textContent = data.name;
   pokemonNumber.textContent = data.id;
   pokemonType.textContent = data.types.map(t => t.type.name).join(', ');
@@ -72,53 +144,43 @@ const renderPokemon = async (pokemon) => {
   const mainType = data.types[0].type.name;
   infoCard.style.backgroundColor = colors[mainType] || '#fff';
 
+  // Carregar imagens
+  const frontImg = await getPokemonImage(data);
+  const backImg = await getPokemonBackImage(data);
+
+  pokemonImage.src = frontImg;
+  pokemonImage.style.display = 'block';
+
+  if (backImg) {
+    pokemonImage2.src = backImg;
+    pokemonImage2.style.display = 'block';
+  } else {
+    pokemonImage2.style.display = 'none'; // oculta se não existir
+  }
+
   searchPokemon = data.id;
   input.value = '';
-} else {
-  notFound.style.display = 'block';
-  pokemonImage.style.display = 'none';
-  pokemonImage2.style.display = 'none';
-
-  pokemonName.textContent = 'Não encontrado';
-  pokemonNumber.textContent = '';
-  pokemonType.textContent = '';
-  pokemonAbilities.textContent = '';
-  pokemonStats.innerHTML = '';
-
-  // Ocultar o elemento de info
-  pokemonInfo.style.display = 'none';  // <-- OCULTA O ELEMENTO
-}
-
-  
-if (data.id <= 649) {
-  pokemonImage.src = data.sprites.versions['generation-v']['black-white']['animated']['front_default'] || '';
-  pokemonImage2.src = data.sprites.versions['generation-v']['black-white']['animated']['back_default'] || '';
-} else {
-  pokemonImage.src = data.sprites.other['official-artwork']['front_default'] || '';
-  pokemonImage2.src = data.sprites.front_default || '';
-}
-
-  
 };
 
+// Buscar por nome ou número
 form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    renderPokemon(input.value.toLowerCase());
+  event.preventDefault();
+  const query = input.value.toLowerCase().trim();
+  if (query) renderPokemon(query);
 });
 
-
+// Botões de navegação
 buttonPrev.addEventListener('click', () => {
-    if (searchPokemon > 1)
-        searchPokemon -= 1;
-    renderPokemon(searchPokemon)
+  if (searchPokemon > 1) {
+    searchPokemon -= 1;
+    renderPokemon(searchPokemon);
+  }
 });
 
 buttonNext.addEventListener('click', () => {
-    searchPokemon += 1;
-    renderPokemon(searchPokemon)
+  searchPokemon += 1;
+  renderPokemon(searchPokemon);
 });
 
-
+// Render inicial
 renderPokemon(searchPokemon);
-
-
