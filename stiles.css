@@ -43,22 +43,20 @@ body {
 .pokemon-display {
   display: flex;
   justify-content: center;
-  gap: 20px;
   margin-bottom: 20px;
 }
 
 .pokemon_image,
 .pokemon_image2 {
-  max-width: 200px;
+  max-width: 150px; 
   height: 150px;
   object-fit: contain; /* Garante que se ajuste ao espaço */
 }
 
 
 .not-found {
-  color: red;
-  font-size: 1.5rem;
-  display: none;
+    width: 100%;
+    height: 100%;
 }
 
 .pokemon_data {
